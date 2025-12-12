@@ -180,8 +180,16 @@ RegisterServerEvent('multijob:admin:addJob')
 AddEventHandler('multijob:admin:addJob', function(data)
     local _source = source
     print('[multijob] Admin: addJob triggered')
-    if not IsAdmin(_source) then return end
-    if not VORPcore then return end
+    print('[multijob] Admin: Data - cid=' .. tostring(data.cid) .. ', job=' .. tostring(data.job) .. ', label=' .. tostring(data.jobLabel) .. ', grade=' .. tostring(data.grade))
+    
+    if not IsAdmin(_source) then 
+        print('[multijob] Admin: User is not admin')
+        return 
+    end
+    if not VORPcore then 
+        print('[multijob] Admin: VORPcore not loaded')
+        return 
+    end
     
     local targetCid = data.cid
     local newJob = data.job
@@ -189,50 +197,69 @@ AddEventHandler('multijob:admin:addJob', function(data)
     local newGrade = tonumber(data.grade) or 0
     
     if not targetCid or not newJob then
+        print('[multijob] Admin: Missing cid or job')
         TriggerClientEvent('vorp:TipRight', _source, 'Missing job data', 4000)
         return
     end
     
+    print('[multijob] Admin: Checking if job exists for cid=' .. tostring(targetCid) .. ', job=' .. tostring(newJob))
+    
     -- Check if job already exists
     MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ? AND job = ?', {targetCid, newJob}, function(result)
+        print('[multijob] Admin: Query result - found ' .. tostring(result and #result or 0) .. ' existing entries')
+        
         if result and result[1] then
             -- Update existing
+            print('[multijob] Admin: Job exists, updating...')
             MySQL.update('UPDATE marshal_multi_jobs SET jobgrade = ?, joblabel = ?, lastonline = ? WHERE cid = ? AND job = ?', 
-            {newGrade, newLabel, os.date('%Y-%m-%d %H:%M:%S'), targetCid, newJob}, function()
+            {newGrade, newLabel, os.date('%Y-%m-%d %H:%M:%S'), targetCid, newJob}, function(rowsAffected)
+                print('[multijob] Admin: Updated ' .. tostring(rowsAffected) .. ' rows')
                 TriggerClientEvent('vorp:TipRight', _source, 'Job updated for player', 4000)
                 
                 -- Send updated jobs list
                 MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(jobs)
+                    print('[multijob] Admin: Sending ' .. tostring(jobs and #jobs or 0) .. ' jobs to client')
                     TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
                 end)
             end)
         else
             -- Get player name for new entry
-            local firstname = 'Admin'
-            local lastname = 'Added'
+            local firstname = 'Unknown'
+            local lastname = 'Player'
             
-            -- Try to get actual name from online player
-            for _, playerId in ipairs(GetPlayers()) do
-                local User = VORPcore.getUser(tonumber(playerId))
-                if User then
-                    local Character = User.getUsedCharacter
-                    if Character and Character.charIdentifier == targetCid then
-                        firstname = Character.firstname or 'Admin'
-                        lastname = Character.lastname or 'Added'
-                        break
+            -- First try to get name from existing database entries for this cid
+            MySQL.query('SELECT firstname, lastname FROM marshal_multi_jobs WHERE cid = ? LIMIT 1', {targetCid}, function(nameResult)
+                if nameResult and nameResult[1] then
+                    firstname = nameResult[1].firstname or 'Unknown'
+                    lastname = nameResult[1].lastname or 'Player'
+                else
+                    -- Try to get actual name from online player
+                    for _, playerId in ipairs(GetPlayers()) do
+                        local User = VORPcore.getUser(tonumber(playerId))
+                        if User then
+                            local Character = User.getUsedCharacter
+                            if Character and Character.charIdentifier == targetCid then
+                                firstname = Character.firstname or 'Unknown'
+                                lastname = Character.lastname or 'Player'
+                                break
+                            end
+                        end
                     end
                 end
-            end
-            
-            -- Insert new
-            MySQL.insert('INSERT INTO marshal_multi_jobs (cid, job, jobgrade, joblabel, firstname, lastname, lastonline) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-            {targetCid, newJob, newGrade, newLabel, firstname, lastname, os.date('%Y-%m-%d %H:%M:%S')}, function(insertId)
-                print('[multijob] Admin: Inserted new job with id ' .. tostring(insertId))
-                TriggerClientEvent('vorp:TipRight', _source, 'Job added to player', 4000)
                 
-                -- Send updated jobs list
-                MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(jobs)
-                    TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
+                print('[multijob] Admin: Inserting new job - cid=' .. tostring(targetCid) .. ', job=' .. tostring(newJob) .. ', grade=' .. tostring(newGrade) .. ', label=' .. tostring(newLabel) .. ', name=' .. firstname .. ' ' .. lastname)
+                
+                -- Insert new
+                MySQL.insert('INSERT INTO marshal_multi_jobs (cid, job, jobgrade, joblabel, firstname, lastname, lastonline) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+                {targetCid, newJob, newGrade, newLabel, firstname, lastname, os.date('%Y-%m-%d %H:%M:%S')}, function(insertId)
+                    print('[multijob] Admin: Inserted new job with id ' .. tostring(insertId))
+                    TriggerClientEvent('vorp:TipRight', _source, 'Job added to player', 4000)
+                    
+                    -- Send updated jobs list
+                    MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(jobs)
+                        print('[multijob] Admin: Sending ' .. tostring(jobs and #jobs or 0) .. ' jobs to client after insert')
+                        TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
+                    end)
                 end)
             end)
         end
@@ -344,25 +371,19 @@ AddEventHandler('multijob:admin:getAllJobs', function()
     end)
 end)
 
--- Remove a specific job entry from the database (for All Jobs tab)
+-- Remove a specific job entry from the database (for All Players tab)
 RegisterServerEvent('multijob:admin:removeJobEntry')
 AddEventHandler('multijob:admin:removeJobEntry', function(targetCid, targetJob)
     local _source = source
     print('[multijob] Admin: removeJobEntry triggered for cid=' .. tostring(targetCid) .. ', job=' .. tostring(targetJob))
     if not IsAdmin(_source) then return end
     
-    -- Set the job to unemployed instead of deleting
-    MySQL.update('UPDATE marshal_multi_jobs SET job = ?, jobgrade = ?, joblabel = ? WHERE cid = ? AND job = ?', 
-        {'unemployed', 0, 'Unemployed', targetCid, targetJob}, function(rowsAffected)
-        print('[multijob] Admin: Updated ' .. tostring(rowsAffected) .. ' rows to unemployed')
+    -- Delete the job entry from the database
+    MySQL.query('DELETE FROM marshal_multi_jobs WHERE cid = ? AND job = ?', {targetCid, targetJob}, function(result)
+        local rowsDeleted = result and result.affectedRows or 0
+        print('[multijob] Admin: Deleted ' .. tostring(rowsDeleted) .. ' job entries')
         
-        -- If no rows affected, the job might already be unemployed or doesn't exist
-        if rowsAffected == 0 then
-            -- Try to delete unemployed entries to clean up duplicates
-            MySQL.query('DELETE FROM marshal_multi_jobs WHERE cid = ? AND job = ?', {targetCid, targetJob})
-        end
-        
-        -- Update online player if applicable
+        -- Update online player if applicable - set them to unemployed if this was their active job
         for _, playerId in ipairs(GetPlayers()) do
             local User = VORPcore.getUser(tonumber(playerId))
             if User then
@@ -380,7 +401,10 @@ AddEventHandler('multijob:admin:removeJobEntry', function(targetCid, targetJob)
         
         TriggerClientEvent('vorp:TipRight', _source, 'Job removed successfully', 4000)
         
-        -- Refresh the all jobs list
-        TriggerEvent('multijob:admin:getAllJobs')
+        -- Refresh the all jobs list by querying and sending back to client
+        MySQL.query('SELECT * FROM marshal_multi_jobs ORDER BY firstname, lastname, job', {}, function(refreshResult)
+            local refreshedJobs = refreshResult or {}
+            TriggerClientEvent('multijob:admin:receiveAllJobs', _source, refreshedJobs)
+        end)
     end)
 end)

@@ -147,6 +147,8 @@ function updatePlayerJobsList() {
     // Bind events
     container.find('.job-item-btn.switch').click(function() {
         const job = $(this).data('job');
+        const btn = $(this);
+        btn.prop('disabled', true).text('Switching...');
         switchPlayerJob(job);
     });
     
@@ -160,49 +162,69 @@ function updatePlayerJobsList() {
     
     container.find('.job-item-btn.delete').click(function() {
         const job = $(this).data('job');
-        if (confirm(`Remove job "${job}" from this player?`)) {
-            removePlayerJob(job);
-        }
+        const btn = $(this);
+        btn.prop('disabled', true).text('Removing...');
+        removePlayerJob(job);
     });
 }
 
 function switchPlayerJob(job) {
     if (!selectedPlayer) return;
     
+    // Update the local selectedPlayer job to avoid race condition
+    const targetCid = selectedPlayer.cid;
+    selectedPlayer.job = job;
+    
     fetch('https://multijob/switchPlayerJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            cid: selectedPlayer.cid,
+            cid: targetCid,
             job: job
         })
     }).then(() => {
-        // Refresh player list
-        fetch('https://multijob/refreshPlayers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        });
+        // Wait a bit then refresh player jobs list
+        setTimeout(() => {
+            fetch('https://multijob/getPlayerJobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: targetCid })
+            });
+            // Also refresh player list to update their current job display
+            fetch('https://multijob/refreshPlayers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+        }, 300);
+    }).catch(err => {
+        console.error('Error switching job:', err);
     });
 }
 
 function removePlayerJob(job) {
     if (!selectedPlayer) return;
     
+    const targetCid = selectedPlayer.cid;
+    
     fetch('https://multijob/removePlayerJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            cid: selectedPlayer.cid,
+            cid: targetCid,
             job: job
         })
     }).then(() => {
-        // Request updated jobs
-        fetch('https://multijob/getPlayerJobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cid: selectedPlayer.cid })
-        });
+        // Wait a bit then request updated jobs
+        setTimeout(() => {
+            fetch('https://multijob/getPlayerJobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: targetCid })
+            });
+        }, 300);
+    }).catch(err => {
+        console.error('Error removing job:', err);
     });
 }
 
@@ -342,7 +364,7 @@ $('#close-btn, #close-btn-2').click(() => {
 
 $('#save-btn').click(() => {
     if (!selectedPlayer) {
-        alert('Please select a player first');
+        console.log('No player selected');
         return;
     }
     
@@ -354,11 +376,14 @@ $('#save-btn').click(() => {
         oldJob: selectedPlayer.job
     };
     
+    const btn = $('#save-btn');
+    btn.prop('disabled', true).text('Saving...');
+    
     fetch('https://multijob/updateJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-    }).then(resp => resp.json()).then(response => {
+    }).then(() => {
         selectedPlayer.job = data.job;
         selectedPlayer.jobLabel = data.jobLabel;
         selectedPlayer.grade = data.grade;
@@ -376,44 +401,63 @@ $('#save-btn').click(() => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         });
+    }).catch(err => {
+        console.error('Error saving job:', err);
+    }).finally(() => {
+        btn.prop('disabled', false).text('Save Job');
     });
 });
 
 $('#add-job-btn').click(() => {
     if (!selectedPlayer) {
-        alert('Please select a player first');
+        console.log('No player selected');
+        return;
+    }
+    
+    const jobId = $('#job-id').val().trim();
+    const jobLabel = $('#job-label').val().trim() || jobId; // Default to job ID if label is empty
+    const jobGrade = $('#job-grade').val() || 0;
+    
+    if (!jobId) {
+        console.log('Missing job ID');
         return;
     }
     
     const data = {
         cid: selectedPlayer.cid,
-        job: $('#job-id').val(),
-        jobLabel: $('#job-label').val(),
-        grade: $('#job-grade').val()
+        job: jobId,
+        jobLabel: jobLabel,
+        grade: jobGrade
     };
     
-    if (!data.job || !data.jobLabel) {
-        alert('Please fill in job ID and label');
-        return;
-    }
+    console.log('Adding job:', data);
+    
+    const btn = $('#add-job-btn');
+    btn.prop('disabled', true).text('Adding...');
     
     fetch('https://multijob/addJob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(() => {
-        // Refresh player jobs list
-        fetch('https://multijob/getPlayerJobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cid: selectedPlayer.cid })
-        });
+        // Small delay to let server process, then refresh player jobs list
+        setTimeout(() => {
+            fetch('https://multijob/getPlayerJobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: selectedPlayer.cid })
+            });
+        }, 300);
+    }).catch(err => {
+        console.error('Error adding job:', err);
+    }).finally(() => {
+        btn.prop('disabled', false).text('Add as New Job');
     });
 });
 
 $('#apply-preset-btn').click(() => {
     if (!selectedPlayer || !selectedPreset) {
-        alert('Please select a player and a preset');
+        console.log('No player or preset selected');
         return;
     }
     
@@ -423,6 +467,9 @@ $('#apply-preset-btn').click(() => {
         jobLabel: selectedPreset.label,
         grade: selectedPreset.grade
     };
+    
+    const btn = $('#apply-preset-btn');
+    btn.prop('disabled', true).text('Applying...');
     
     fetch('https://multijob/addJob', {
         method: 'POST',
@@ -438,11 +485,16 @@ $('#apply-preset-btn').click(() => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: selectedPlayer.cid })
         });
+    }).catch(err => {
+        console.error('Error applying preset:', err);
+    }).finally(() => {
+        btn.prop('disabled', false).text('Apply Selected Preset');
     });
 });
 
-// ==================== ALL JOBS TAB ====================
+// ==================== ALL PLAYERS TAB ====================
 let allJobs = [];
+let allJobsSort = { column: 'name', direction: 'asc' };
 
 function loadAllJobs() {
     fetch('https://multijob/getAllJobs', {
@@ -460,7 +512,7 @@ function renderAllJobs() {
     const jobFilter = $('#alljobs-filter').val();
     
     // Filter jobs
-    const filtered = allJobs.filter(job => {
+    let filtered = allJobs.filter(job => {
         const matchesSearch = !search || 
             (job.firstname + ' ' + job.lastname).toLowerCase().includes(search) ||
             job.job.toLowerCase().includes(search) ||
@@ -471,12 +523,44 @@ function renderAllJobs() {
         return matchesSearch && matchesFilter;
     });
     
-    // Sort alphabetically by name, then job
+    // Sort by selected column
     filtered.sort((a, b) => {
-        const nameA = (a.firstname + ' ' + a.lastname).toLowerCase();
-        const nameB = (b.firstname + ' ' + b.lastname).toLowerCase();
-        if (nameA !== nameB) return nameA.localeCompare(nameB);
-        return a.job.localeCompare(b.job);
+        let valA, valB;
+        
+        switch (allJobsSort.column) {
+            case 'name':
+                valA = (a.firstname + ' ' + a.lastname).toLowerCase();
+                valB = (b.firstname + ' ' + b.lastname).toLowerCase();
+                break;
+            case 'job':
+                valA = a.job.toLowerCase();
+                valB = b.job.toLowerCase();
+                break;
+            case 'label':
+                valA = (a.joblabel || a.job).toLowerCase();
+                valB = (b.joblabel || b.job).toLowerCase();
+                break;
+            case 'grade':
+                valA = a.jobgrade;
+                valB = b.jobgrade;
+                break;
+            case 'lastlogin':
+                valA = new Date(a.lastonline || 0).getTime();
+                valB = new Date(b.lastonline || 0).getTime();
+                break;
+            default:
+                valA = (a.firstname + ' ' + a.lastname).toLowerCase();
+                valB = (b.firstname + ' ' + b.lastname).toLowerCase();
+        }
+        
+        let result;
+        if (typeof valA === 'number') {
+            result = valA - valB;
+        } else {
+            result = valA.localeCompare(valB);
+        }
+        
+        return allJobsSort.direction === 'asc' ? result : -result;
     });
     
     // Render rows
@@ -501,20 +585,33 @@ function renderAllJobs() {
     });
     
     // Update count
-    $('#alljobs-count').text(filtered.length + ' jobs found');
+    $('#alljobs-count').text(filtered.length + ' players found');
     
     // Bind remove buttons
-    tbody.find('.remove-job-btn').click(function() {
+    tbody.find('.remove-job-btn').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const cid = $(this).data('cid');
         const jobName = $(this).data('job');
-        if (confirm(`Remove job "${jobName}" from this player? This will set it to Unemployed.`)) {
-            fetch('https://multijob/removeJobEntry', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cid: cid, job: jobName })
-            });
-        }
+        const btn = $(this);
+        
+        // Disable button to prevent double-clicks
+        btn.prop('disabled', true).text('Removing...');
+        
+        fetch('https://multijob/removeJobEntry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cid: cid, job: jobName })
+        }).catch(err => {
+            console.error('Error removing job:', err);
+            btn.prop('disabled', false).text('Remove');
+        });
     });
+    
+    // Update sort indicators
+    $('.alljobs-table th.sortable').removeClass('asc desc');
+    $(`.alljobs-table th.sortable[data-sort="${allJobsSort.column}"]`).addClass(allJobsSort.direction);
 }
 
 function formatLastLogin(dateStr) {
@@ -571,10 +668,27 @@ function updateJobFilter() {
     }
 }
 
-// All Jobs tab event handlers
+// All Players tab event handlers
 $('#alljobs-search').on('input', renderAllJobs);
 $('#alljobs-filter').on('change', renderAllJobs);
 $('#refresh-alljobs-btn').click(loadAllJobs);
+
+// Sortable column headers
+$(document).on('click', '.alljobs-table th.sortable', function() {
+    const column = $(this).data('sort');
+    
+    if (allJobsSort.column === column) {
+        // Toggle direction
+        allJobsSort.direction = allJobsSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default to ascending
+        allJobsSort.column = column;
+        allJobsSort.direction = 'asc';
+    }
+    
+    renderAllJobs();
+});
+
 $('#close-btn-3').click(() => {
     $('#app').fadeOut();
     fetch('https://multijob/close', {

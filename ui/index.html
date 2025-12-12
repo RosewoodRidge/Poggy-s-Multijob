@@ -25,8 +25,8 @@
             <div class="content">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="edit">Edit Job</button>
-                    <button class="tab-btn" data-tab="alljobs">All Jobs</button>
                     <button class="tab-btn" data-tab="presets">Job Presets</button>
+                    <button class="tab-btn" data-tab="alljobs">All Players</button>
                 </div>
                 
                 <!-- Edit Job Tab -->
@@ -105,11 +105,11 @@
                         <table class="alljobs-table">
                             <thead>
                                 <tr>
-                                    <th>Character</th>
-                                    <th>Job</th>
-                                    <th>Label</th>
-                                    <th>Grade</th>
-                                    <th>Last Login</th>
+                                    <th class="sortable" data-sort="name">Character <span class="sort-icon"></span></th>
+                                    <th class="sortable" data-sort="job">Job <span class="sort-icon"></span></th>
+                                    <th class="sortable" data-sort="label">Label <span class="sort-icon"></span></th>
+                                    <th class="sortable" data-sort="grade">Grade <span class="sort-icon"></span></th>
+                                    <th class="sortable" data-sort="lastlogin">Last Login <span class="sort-icon"></span></th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
