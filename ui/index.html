@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <!-- Left Sidebar: Players -->
+            <div class="sidebar">
+                <h3>Players</h3>
+                <input type="text" id="search" placeholder="Search Character...">
+                <div class="player-section">
+                    <div class="section-header online">Online</div>
+                    <ul id="online-player-list"></ul>
+                </div>
+                <div class="player-section">
+                    <div class="section-header offline">Offline</div>
+                    <ul id="offline-player-list"></ul>
+                </div>
+            </div>
+            
+            <!-- Center: Player Info & Job Editor -->
+            <div class="content">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="edit">Edit Job</button>
+                    <button class="tab-btn" data-tab="presets">Job Presets</button>
+                </div>
+                
+                <!-- Edit Job Tab -->
+                <div class="tab-content active" id="tab-edit">
+                    <div class="player-info">
+                        <div class="form-group">
+                            <label>Player Name</label>
+                            <input type="text" id="player-name" disabled>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Jobs Section -->
+                    <div class="jobs-section">
+                        <h4>Player's Jobs</h4>
+                        <div id="player-jobs-list" class="player-jobs-list">
+                            <p class="no-jobs">Select a player to view their jobs</p>
+                        </div>
+                    </div>
+                    
+                    <hr class="divider">
+                    
+                    <!-- Job Editor -->
+                    <h4>Edit/Add Job</h4>
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label>Job (ID)</label>
+                            <input type="text" id="job-id" placeholder="e.g. Lemoyne">
+                        </div>
+                        <div class="form-group half">
+                            <label>Grade</label>
+                            <input type="number" id="job-grade" value="0" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Job Label</label>
+                        <input type="text" id="job-label" placeholder="e.g. DEPUTY">
+                    </div>
+                    
+                    <div class="buttons">
+                        <button id="save-btn">Save Job</button>
+                        <button id="add-job-btn">Add as New Job</button>
+                        <button id="close-btn">Close</button>
+                    </div>
+                </div>
+                
+                <!-- Presets Tab -->
+                <div class="tab-content" id="tab-presets">
+                    <div class="presets-header">
+                        <input type="text" id="preset-search" placeholder="Search presets...">
+                        <select id="category-filter">
+                            <option value="all">All Categories</option>
+                            <option value="police">Police Departments</option>
+                            <option value="government">Government</option>
+                            <option value="medical">Medical</option>
+                            <option value="business">Business Licenses</option>
+                            <option value="shops">Shop Owners</option>
+                        </select>
+                    </div>
+                    <div id="presets-list" class="presets-list"></div>
+                    <div class="buttons">
+                        <button id="apply-preset-btn" disabled>Apply Selected Preset</button>
+                        <button id="close-btn-2">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
