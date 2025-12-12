@@ -329,3 +329,58 @@ AddEventHandler('multijob:admin:updateJob', function(data)
         TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
     end)
 end)
+
+-- Get ALL jobs from database for the All Jobs tab
+RegisterServerEvent('multijob:admin:getAllJobs')
+AddEventHandler('multijob:admin:getAllJobs', function()
+    local _source = source
+    print('[multijob] Admin: getAllJobs triggered by source ' .. _source)
+    if not IsAdmin(_source) then return end
+    
+    MySQL.query('SELECT * FROM marshal_multi_jobs ORDER BY firstname, lastname, job', {}, function(result)
+        local jobs = result or {}
+        print('[multijob] Admin: Found ' .. #jobs .. ' total jobs in database')
+        TriggerClientEvent('multijob:admin:receiveAllJobs', _source, jobs)
+    end)
+end)
+
+-- Remove a specific job entry from the database (for All Jobs tab)
+RegisterServerEvent('multijob:admin:removeJobEntry')
+AddEventHandler('multijob:admin:removeJobEntry', function(targetCid, targetJob)
+    local _source = source
+    print('[multijob] Admin: removeJobEntry triggered for cid=' .. tostring(targetCid) .. ', job=' .. tostring(targetJob))
+    if not IsAdmin(_source) then return end
+    
+    -- Set the job to unemployed instead of deleting
+    MySQL.update('UPDATE marshal_multi_jobs SET job = ?, jobgrade = ?, joblabel = ? WHERE cid = ? AND job = ?', 
+        {'unemployed', 0, 'Unemployed', targetCid, targetJob}, function(rowsAffected)
+        print('[multijob] Admin: Updated ' .. tostring(rowsAffected) .. ' rows to unemployed')
+        
+        -- If no rows affected, the job might already be unemployed or doesn't exist
+        if rowsAffected == 0 then
+            -- Try to delete unemployed entries to clean up duplicates
+            MySQL.query('DELETE FROM marshal_multi_jobs WHERE cid = ? AND job = ?', {targetCid, targetJob})
+        end
+        
+        -- Update online player if applicable
+        for _, playerId in ipairs(GetPlayers()) do
+            local User = VORPcore.getUser(tonumber(playerId))
+            if User then
+                local Character = User.getUsedCharacter
+                if Character and Character.charIdentifier == targetCid and Character.job == targetJob then
+                    Character.setJob('unemployed')
+                    Character.setJobGrade(0)
+                    Character.setJobLabel('Unemployed')
+                    TriggerClientEvent('vorp:TipRight', tonumber(playerId), 'Your job has been removed by an admin', 4000)
+                    TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
+                    break
+                end
+            end
+        end
+        
+        TriggerClientEvent('vorp:TipRight', _source, 'Job removed successfully', 4000)
+        
+        -- Refresh the all jobs list
+        TriggerEvent('multijob:admin:getAllJobs')
+    end)
+end)

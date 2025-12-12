@@ -101,3 +101,26 @@ RegisterNUICallback('updateJob', function(data, cb)
     
     cb({ok = true})
 end)
+
+-- All Jobs tab callbacks
+RegisterNUICallback('getAllJobs', function(data, cb)
+    print('[multijob] NUI getAllJobs callback received')
+    TriggerServerEvent('multijob:admin:getAllJobs')
+    cb({ok = true})
+end)
+
+RegisterNUICallback('removeJobEntry', function(data, cb)
+    print('[multijob] NUI removeJobEntry callback received')
+    print('[multijob] Data: cid=' .. tostring(data.cid) .. ', job=' .. tostring(data.job))
+    TriggerServerEvent('multijob:admin:removeJobEntry', data.cid, data.job)
+    cb({ok = true})
+end)
+
+RegisterNetEvent('multijob:admin:receiveAllJobs')
+AddEventHandler('multijob:admin:receiveAllJobs', function(jobs)
+    print('[multijob] Received ' .. #jobs .. ' total jobs for All Jobs tab')
+    SendNUIMessage({
+        type = 'updateAllJobs',
+        jobs = jobs
+    })
+end)

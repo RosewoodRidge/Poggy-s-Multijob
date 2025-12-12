@@ -108,6 +108,14 @@ The admin panel (`/mjadmin`) provides:
 - **Remove Jobs** - Remove specific jobs from players
 - **Add Jobs** - Assign new jobs to players
 
+### All Jobs Tab
+- **Complete Database View** - See every job entry in the database at a glance
+- **Search & Filter** - Search by character name, job ID, or label
+- **Job Filter Dropdown** - Filter by specific job type
+- **Last Login Display** - See when each player was last online (color-coded: green = recent, red = old)
+- **Quick Remove** - Remove any job with one click (sets to Unemployed)
+- **Alphabetical Sorting** - Sorted by character name, then job
+
 ### Job Presets Tab
 - **Categorized Presets** - Police, Government, Medical, Business, Shops
 - **Accordion Navigation** - Expandable subcategories

@@ -25,6 +25,7 @@
             <div class="content">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="edit">Edit Job</button>
+                    <button class="tab-btn" data-tab="alljobs">All Jobs</button>
                     <button class="tab-btn" data-tab="presets">Job Presets</button>
                 </div>
                 
@@ -88,6 +89,37 @@
                     <div class="buttons">
                         <button id="apply-preset-btn" disabled>Apply Selected Preset</button>
                         <button id="close-btn-2">Close</button>
+                    </div>
+                </div>
+                
+                <!-- All Jobs Tab -->
+                <div class="tab-content" id="tab-alljobs">
+                    <div class="alljobs-header">
+                        <input type="text" id="alljobs-search" placeholder="Search by name or job...">
+                        <select id="alljobs-filter">
+                            <option value="all">All Jobs</option>
+                        </select>
+                        <button id="refresh-alljobs-btn">Refresh</button>
+                    </div>
+                    <div class="alljobs-table-container">
+                        <table class="alljobs-table">
+                            <thead>
+                                <tr>
+                                    <th>Character</th>
+                                    <th>Job</th>
+                                    <th>Label</th>
+                                    <th>Grade</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alljobs-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alljobs-footer">
+                        <span id="alljobs-count">0 jobs found</span>
+                        <button id="close-btn-3">Close</button>
                     </div>
                 </div>
             </div>

@@ -33,6 +33,10 @@ window.addEventListener('message', function(event) {
     } else if (event.data.type === 'updatePlayerJobs') {
         playerJobs = event.data.jobs || [];
         updatePlayerJobsList();
+    } else if (event.data.type === 'updateAllJobs') {
+        allJobs = event.data.jobs || [];
+        updateJobFilter();
+        renderAllJobs();
     }
 });
 
@@ -435,6 +439,154 @@ $('#apply-preset-btn').click(() => {
             body: JSON.stringify({ cid: selectedPlayer.cid })
         });
     });
+});
+
+// ==================== ALL JOBS TAB ====================
+let allJobs = [];
+
+function loadAllJobs() {
+    fetch('https://multijob/getAllJobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    });
+}
+
+function renderAllJobs() {
+    const tbody = $('#alljobs-tbody');
+    tbody.empty();
+    
+    const search = $('#alljobs-search').val().toLowerCase();
+    const jobFilter = $('#alljobs-filter').val();
+    
+    // Filter jobs
+    const filtered = allJobs.filter(job => {
+        const matchesSearch = !search || 
+            (job.firstname + ' ' + job.lastname).toLowerCase().includes(search) ||
+            job.job.toLowerCase().includes(search) ||
+            (job.joblabel && job.joblabel.toLowerCase().includes(search));
+        
+        const matchesFilter = jobFilter === 'all' || job.job === jobFilter;
+        
+        return matchesSearch && matchesFilter;
+    });
+    
+    // Sort alphabetically by name, then job
+    filtered.sort((a, b) => {
+        const nameA = (a.firstname + ' ' + a.lastname).toLowerCase();
+        const nameB = (b.firstname + ' ' + b.lastname).toLowerCase();
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return a.job.localeCompare(b.job);
+    });
+    
+    // Render rows
+    filtered.forEach(job => {
+        const charName = (job.firstname || 'Unknown') + ' ' + (job.lastname || 'Unknown');
+        const lastLogin = job.lastonline || 'Unknown';
+        const lastLoginClass = getLastLoginClass(lastLogin);
+        
+        const row = $(`
+            <tr>
+                <td class="char-name">${charName}</td>
+                <td><span class="job-name">${job.job}</span></td>
+                <td class="job-label">${job.joblabel || job.job}</td>
+                <td class="job-grade">${job.jobgrade}</td>
+                <td class="last-login ${lastLoginClass}">${formatLastLogin(lastLogin)}</td>
+                <td class="actions-cell">
+                    <button class="remove-job-btn" data-cid="${job.cid}" data-job="${job.job}">Remove</button>
+                </td>
+            </tr>
+        `);
+        tbody.append(row);
+    });
+    
+    // Update count
+    $('#alljobs-count').text(filtered.length + ' jobs found');
+    
+    // Bind remove buttons
+    tbody.find('.remove-job-btn').click(function() {
+        const cid = $(this).data('cid');
+        const jobName = $(this).data('job');
+        if (confirm(`Remove job "${jobName}" from this player? This will set it to Unemployed.`)) {
+            fetch('https://multijob/removeJobEntry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: cid, job: jobName })
+            });
+        }
+    });
+}
+
+function formatLastLogin(dateStr) {
+    if (!dateStr || dateStr === 'Unknown') return 'Unknown';
+    
+    // Try to parse the date
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + ' days ago';
+    if (days < 30) return Math.floor(days / 7) + ' weeks ago';
+    if (days < 365) return Math.floor(days / 30) + ' months ago';
+    return Math.floor(days / 365) + ' years ago';
+}
+
+function getLastLoginClass(dateStr) {
+    if (!dateStr || dateStr === 'Unknown') return '';
+    
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days <= 7) return 'recent';
+    if (days > 30) return 'old';
+    return '';
+}
+
+function updateJobFilter() {
+    const select = $('#alljobs-filter');
+    const currentValue = select.val();
+    
+    // Get unique job names
+    const uniqueJobs = [...new Set(allJobs.map(j => j.job))].sort();
+    
+    // Clear and rebuild options
+    select.empty();
+    select.append('<option value="all">All Jobs</option>');
+    uniqueJobs.forEach(job => {
+        select.append(`<option value="${job}">${job}</option>`);
+    });
+    
+    // Restore selection if still valid
+    if (uniqueJobs.includes(currentValue)) {
+        select.val(currentValue);
+    }
+}
+
+// All Jobs tab event handlers
+$('#alljobs-search').on('input', renderAllJobs);
+$('#alljobs-filter').on('change', renderAllJobs);
+$('#refresh-alljobs-btn').click(loadAllJobs);
+$('#close-btn-3').click(() => {
+    $('#app').fadeOut();
+    fetch('https://multijob/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    });
+});
+
+// Load all jobs when switching to the tab
+$('.tab-btn[data-tab="alljobs"]').click(function() {
+    loadAllJobs();
 });
 
 // Handle ESC key to close
