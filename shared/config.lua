@@ -1,6 +1,6 @@
 Config = {}
 
-Config.Debug = false
+Config.Debug = true
 
 -- Command to open the menu
 Config.Command = 'multijob'

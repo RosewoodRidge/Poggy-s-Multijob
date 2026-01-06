@@ -6,6 +6,8 @@ let playerJobs = []; // All jobs for selected player from database
 // Job Presets - Will be loaded from Config.lua
 let jobPresets = {};
 
+let resourceName = 'multijob'; // default fallback
+
 window.addEventListener('message', function(event) {
     if (event.data.type === 'show') {
         if (event.data.show) {
@@ -37,6 +39,8 @@ window.addEventListener('message', function(event) {
         allJobs = event.data.jobs || [];
         updateJobFilter();
         renderAllJobs();
+    } else if (event.data.action === 'setResourceName') {
+        resourceName = event.data.resourceName;
     }
 });
 
@@ -96,7 +100,7 @@ function selectPlayer(player, element) {
     $('#job-grade').val(player.grade);
     
     // Request player's jobs from server
-    fetch('https://multijob/getPlayerJobs', {
+    fetch(`https://${resourceName}/getPlayerJobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cid: player.cid })
@@ -175,7 +179,7 @@ function switchPlayerJob(job) {
     const targetCid = selectedPlayer.cid;
     selectedPlayer.job = job;
     
-    fetch('https://multijob/switchPlayerJob', {
+    fetch(`https://${resourceName}/switchPlayerJob`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -185,13 +189,13 @@ function switchPlayerJob(job) {
     }).then(() => {
         // Wait a bit then refresh player jobs list
         setTimeout(() => {
-            fetch('https://multijob/getPlayerJobs', {
+            fetch(`https://${resourceName}/getPlayerJobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cid: targetCid })
             });
             // Also refresh player list to update their current job display
-            fetch('https://multijob/refreshPlayers', {
+            fetch(`https://${resourceName}/refreshPlayers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
@@ -207,7 +211,7 @@ function removePlayerJob(job) {
     
     const targetCid = selectedPlayer.cid;
     
-    fetch('https://multijob/removePlayerJob', {
+    fetch(`https://${resourceName}/removePlayerJob`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -217,7 +221,7 @@ function removePlayerJob(job) {
     }).then(() => {
         // Wait a bit then request updated jobs
         setTimeout(() => {
-            fetch('https://multijob/getPlayerJobs', {
+            fetch(`https://${resourceName}/getPlayerJobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cid: targetCid })
@@ -355,7 +359,7 @@ $('#category-filter').on('change', renderPresets);
 
 $('#close-btn, #close-btn-2').click(() => {
     $('#app').fadeOut();
-    fetch('https://multijob/close', {
+    fetch(`https://${resourceName}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -379,7 +383,7 @@ $('#save-btn').click(() => {
     const btn = $('#save-btn');
     btn.prop('disabled', true).text('Saving...');
     
-    fetch('https://multijob/updateJob', {
+    fetch(`https://${resourceName}/updateJob`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -389,14 +393,14 @@ $('#save-btn').click(() => {
         selectedPlayer.grade = data.grade;
         
         // Refresh player jobs list
-        fetch('https://multijob/getPlayerJobs', {
+        fetch(`https://${resourceName}/getPlayerJobs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: selectedPlayer.cid })
         });
         
         // Refresh players list
-        fetch('https://multijob/refreshPlayers', {
+        fetch(`https://${resourceName}/refreshPlayers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
@@ -435,14 +439,14 @@ $('#add-job-btn').click(() => {
     const btn = $('#add-job-btn');
     btn.prop('disabled', true).text('Adding...');
     
-    fetch('https://multijob/addJob', {
+    fetch(`https://${resourceName}/addJob`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(() => {
         // Small delay to let server process, then refresh player jobs list
         setTimeout(() => {
-            fetch('https://multijob/getPlayerJobs', {
+            fetch(`https://${resourceName}/getPlayerJobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cid: selectedPlayer.cid })
@@ -471,7 +475,7 @@ $('#apply-preset-btn').click(() => {
     const btn = $('#apply-preset-btn');
     btn.prop('disabled', true).text('Applying...');
     
-    fetch('https://multijob/addJob', {
+    fetch(`https://${resourceName}/addJob`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -480,7 +484,7 @@ $('#apply-preset-btn').click(() => {
         $('.tab-btn[data-tab="edit"]').click();
         
         // Refresh player jobs list
-        fetch('https://multijob/getPlayerJobs', {
+        fetch(`https://${resourceName}/getPlayerJobs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: selectedPlayer.cid })
@@ -497,7 +501,7 @@ let allJobs = [];
 let allJobsSort = { column: 'name', direction: 'asc' };
 
 function loadAllJobs() {
-    fetch('https://multijob/getAllJobs', {
+    fetch(`https://${resourceName}/getAllJobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -599,7 +603,7 @@ function renderAllJobs() {
         // Disable button to prevent double-clicks
         btn.prop('disabled', true).text('Removing...');
         
-        fetch('https://multijob/removeJobEntry', {
+        fetch(`https://${resourceName}/removeJobEntry`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: cid, job: jobName })
@@ -691,7 +695,7 @@ $(document).on('click', '.alljobs-table th.sortable', function() {
 
 $('#close-btn-3').click(() => {
     $('#app').fadeOut();
-    fetch('https://multijob/close', {
+    fetch(`https://${resourceName}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -707,7 +711,7 @@ $('.tab-btn[data-tab="alljobs"]').click(function() {
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         $('#app').fadeOut();
-        fetch('https://multijob/close', {
+        fetch(`https://${resourceName}/close`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})

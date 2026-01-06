@@ -124,3 +124,12 @@ AddEventHandler('multijob:admin:receiveAllJobs', function(jobs)
         jobs = jobs
     })
 end)
+
+-- Add this near the top or when opening the UI
+local resourceName = GetCurrentResourceName()
+
+-- When opening/showing the NUI, send the resource name:
+SendNUIMessage({
+    action = "setResourceName",
+    resourceName = resourceName
+})

@@ -4,7 +4,7 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 
 author 'Poggy'
 description 'Multijob System'
-version '1.1.0'
+version '1.1.1'
 
 shared_scripts {
     'shared/config.lua',
