@@ -1,6 +1,6 @@
 Config = {}
 
-Config.Debug = true
+Config.Debug = false
 
 -- Command to open the menu
 Config.Command = 'multijob'
@@ -34,6 +34,22 @@ Config.JobPresets = {
     police = {
         name = "Police Departments",
         jobs = {
+            -- Lemoyne Sheriff
+            { job = "SheriffE", label = "RECRUIT", grade = 0, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "DEPUTY", grade = 0, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "CORPORAL", grade = 1, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "DETECTIVE", grade = 1, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "SERGEANT", grade = 1, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "LIEUTENANT", grade = 2, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "UNDERSHERIFF", grade = 3, category = "Heartland Sheriff" },
+            { job = "SheriffE", label = "SHERIFF", grade = 4, category = "Heartland Sheriff" },
+            -- West Elizabeth Sheriff
+            { job = "SheriffW", label = "RECRUIT", grade = 0, category = "Frontier Sheriff" },
+            { job = "SheriffW", label = "DEPUTY", grade = 0, category = "Frontier Sheriff" },
+            { job = "SheriffW", label = "SERGEANT", grade = 1, category = "Frontier Sheriff" },
+            { job = "SheriffW", label = "LIEUTENANT", grade = 2, category = "Frontier Sheriff" },
+            { job = "SheriffW", label = "UNDERSHERIFF", grade = 3, category = "Frontier Sheriff" },
+            { job = "SheriffW", label = "SHERIFF", grade = 4, category = "Frontier Sheriff" },
             -- Lemoyne Sheriff
             { job = "Lemoyne", label = "DEPUTY", grade = 0, category = "Lemoyne Sheriff" },
             { job = "Lemoyne", label = "SERGEANT", grade = 1, category = "Lemoyne Sheriff" },

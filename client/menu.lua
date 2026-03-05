@@ -11,7 +11,8 @@ end)
 local function IsValidJobForDisplay(job)
     if not job or not job.job or job.job == '' then return false end
     local lowerJob = string.lower(job.job)
-    if lowerJob == 'unemployed' or lowerJob == 'unknown' or lowerJob == 'none' or lowerJob == '' then
+    -- 'unemployed' is now a valid always-available option; only filter truly invalid entries
+    if lowerJob == 'unknown' or lowerJob == 'none' or lowerJob == '' then
         return false
     end
     return true
@@ -19,7 +20,7 @@ end
 
 function OpenMultijobMenu(jobs, currentJob)
     if not MenuData or not MenuData.Open then
-        print("VORP Menu not loaded")
+        if Config.Debug then print("VORP Menu not loaded") end
         return
     end
 
