@@ -24,32 +24,14 @@ local function IsAdmin(source)
     return false
 end
 
-RegisterServerEvent('multijob:admin:openMenu')
-AddEventHandler('multijob:admin:openMenu', function()
-    local _source = source
-    if Config.Debug then print('[multijob] Admin: openMenu triggered by source ' .. _source) end
-    if IsAdmin(_source) then
-        if Config.Debug then print('[multijob] Admin: User is admin, showing menu') end
-        TriggerClientEvent('multijob:admin:showMenu', _source)
-    else
-        if Config.Debug then print('[multijob] Admin: User is NOT admin') end
-        TriggerClientEvent('vorp:TipRight', _source, Locales['not_allowed'], 4000)
-    end
-end)
-
-RegisterServerEvent('multijob:admin:getPlayers')
-AddEventHandler('multijob:admin:getPlayers', function()
-    local _source = source
-    if Config.Debug then print('[multijob] Admin: getPlayers triggered by source ' .. _source) end
-    if not IsAdmin(_source) then return end
+-- Helper function to fetch and send the player list to an admin (avoids TriggerEvent source issues)
+local function FetchAndSendPlayerList(adminSource)
     if not VORPcore then return end
 
-    -- Get all characters from database who have multijobs
     MySQL.query('SELECT DISTINCT cid, firstname, lastname FROM marshal_multi_jobs ORDER BY firstname, lastname', {}, function(dbResult)
         local allPlayers = {}
         local onlineCids = {}
-        
-        -- First, collect all online players
+
         for _, playerId in ipairs(GetPlayers()) do
             local User = VORPcore.getUser(tonumber(playerId))
             if User then
@@ -70,19 +52,15 @@ AddEventHandler('multijob:admin:getPlayers', function()
                 end
             end
         end
-        
-        -- Then add offline players from database
+
         if dbResult then
             for _, row in ipairs(dbResult) do
                 if not onlineCids[row.cid] then
-                    -- Get their current job from the database
                     MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ? ORDER BY lastonline DESC LIMIT 1', {row.cid}, function(jobResult)
                         if jobResult and jobResult[1] then
-                            local firstname = row.firstname or 'Unknown'
-                            local lastname = row.lastname or 'Unknown'
                             table.insert(allPlayers, {
                                 source = nil,
-                                charName = firstname .. ' ' .. lastname,
+                                charName = (row.firstname or 'Unknown') .. ' ' .. (row.lastname or 'Unknown'),
                                 cid = row.cid,
                                 job = jobResult[1].job or 'unemployed',
                                 jobLabel = jobResult[1].joblabel or jobResult[1].job or 'Unemployed',
@@ -94,12 +72,49 @@ AddEventHandler('multijob:admin:getPlayers', function()
                 end
             end
         end
-        
-        -- Wait a bit for async queries to complete, then send
+
         Wait(500)
-        if Config.Debug then print('[multijob] Admin: Sending ' .. #allPlayers .. ' players to client') end
-        TriggerClientEvent('multijob:admin:receivePlayers', _source, allPlayers)
+        if Config.Debug then print('[multijob] Admin: Sending ' .. #allPlayers .. ' players to admin ' .. tostring(adminSource)) end
+        TriggerClientEvent('multijob:admin:receivePlayers', adminSource, allPlayers)
     end)
+end
+
+-- Helper: notify an online player that their jobs list has changed
+local function NotifyTargetPlayer(targetCid)
+    if not VORPcore then return end
+    for _, playerId in ipairs(GetPlayers()) do
+        local User = VORPcore.getUser(tonumber(playerId))
+        if User then
+            local Character = User.getUsedCharacter
+            if Character and Character.charIdentifier == targetCid then
+                TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
+                return
+            end
+        end
+    end
+end
+
+RegisterServerEvent('multijob:admin:openMenu')
+AddEventHandler('multijob:admin:openMenu', function()
+    local _source = source
+    if Config.Debug then print('[multijob] Admin: openMenu triggered by source ' .. _source) end
+    if IsAdmin(_source) then
+        if Config.Debug then print('[multijob] Admin: User is admin, showing menu') end
+        TriggerClientEvent('multijob:admin:showMenu', _source)
+    else
+        if Config.Debug then print('[multijob] Admin: User is NOT admin') end
+        TriggerClientEvent('vorp:TipRight', _source, Locales['not_allowed'], 4000)
+    end
+end)
+
+RegisterServerEvent('multijob:admin:getPlayers')
+AddEventHandler('multijob:admin:getPlayers', function()
+    local _source = source
+    if Config.Debug then print('[multijob] Admin: getPlayers triggered by source ' .. _source) end
+    if not IsAdmin(_source) then return end
+    if not VORPcore then return end
+
+    FetchAndSendPlayerList(_source)
 end)
 
 -- Get all jobs for a specific player (for admin panel)
@@ -139,7 +154,9 @@ AddEventHandler('multijob:admin:switchPlayerJob', function(targetCid, targetJob)
                         Character.setJob(jobData.job)
                         Character.setJobGrade(jobData.jobgrade)
                         Character.setJobLabel(jobData.joblabel)
+                        PersistJobToCharacters(Character.identifier, Character.charIdentifier, jobData.job, jobData.jobgrade, jobData.joblabel)
                         TriggerClientEvent('vorp:TipRight', tonumber(playerId), 'Your active job has been changed by an admin to: ' .. jobData.joblabel, 4000)
+                        TriggerClientEvent('vorp:playerJobChange', tonumber(playerId))
                         TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
                         break
                     end
@@ -148,10 +165,12 @@ AddEventHandler('multijob:admin:switchPlayerJob', function(targetCid, targetJob)
             
             TriggerClientEvent('vorp:TipRight', _source, 'Player job switched successfully', 4000)
             
-            -- Refresh admin's player list
+            -- Refresh admin's player list and target player's jobs
             Wait(300)
-            TriggerEvent('multijob:admin:getPlayers')
-            TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, result)
+            FetchAndSendPlayerList(_source)
+            MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(updatedJobs)
+                TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, updatedJobs or {})
+            end)
         else
             TriggerClientEvent('vorp:TipRight', _source, 'Job not found in database', 4000)
         end
@@ -168,6 +187,28 @@ AddEventHandler('multijob:admin:removePlayerJob', function(targetCid, targetJob)
     MySQL.execute('DELETE FROM marshal_multi_jobs WHERE cid = ? AND job = ?', {targetCid, targetJob}, function(affectedRows)
         if Config.Debug then print('[multijob] Admin: Deleted ' .. tostring(affectedRows) .. ' job entries') end
         TriggerClientEvent('vorp:TipRight', _source, 'Job removed from player', 4000)
+        
+        -- If the removed job was the player's current active job, set them to unemployed
+        if VORPcore then
+            for _, playerId in ipairs(GetPlayers()) do
+                local User = VORPcore.getUser(tonumber(playerId))
+                if User then
+                    local Character = User.getUsedCharacter
+                    if Character and Character.charIdentifier == targetCid then
+                        if Character.job == targetJob then
+                            Character.setJob('unemployed')
+                            Character.setJobGrade(0)
+                            Character.setJobLabel('Unemployed')
+                            PersistJobToCharacters(Character.identifier, Character.charIdentifier, 'unemployed', 0, 'Unemployed')
+                            TriggerClientEvent('vorp:TipRight', tonumber(playerId), 'Your job has been removed by an admin', 4000)
+                            TriggerClientEvent('vorp:playerJobChange', tonumber(playerId))
+                        end
+                        TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
+                        break
+                    end
+                end
+            end
+        end
         
         -- Send updated jobs list
         MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(result)
@@ -220,6 +261,8 @@ AddEventHandler('multijob:admin:addJob', function(data)
                     if Config.Debug then print('[multijob] Admin: Sending ' .. tostring(jobs and #jobs or 0) .. ' jobs to client') end
                     TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
                 end)
+                -- Notify target player so their cached jobs update
+                NotifyTargetPlayer(targetCid)
             end)
         else
             -- Get player name for new entry
@@ -258,6 +301,8 @@ AddEventHandler('multijob:admin:addJob', function(data)
                         if Config.Debug then print('[multijob] Admin: Sending ' .. tostring(jobs and #jobs or 0) .. ' jobs to client after insert') end
                         TriggerClientEvent('multijob:admin:receivePlayerJobs', _source, jobs or {})
                     end)
+                    -- Notify target player so their cached jobs update
+                    NotifyTargetPlayer(targetCid)
                 end)
             end)
         end
@@ -345,7 +390,9 @@ AddEventHandler('multijob:admin:updateJob', function(data)
                     Character.setJob(newJob)
                     Character.setJobGrade(newGrade)
                     Character.setJobLabel(newLabel)
+                    PersistJobToCharacters(Character.identifier, Character.charIdentifier, newJob, newGrade, newLabel)
                     TriggerClientEvent('vorp:TipRight', tonumber(playerId), 'Your job has been updated by an admin', 4000)
+                    TriggerClientEvent('vorp:playerJobChange', tonumber(playerId))
                     TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
                 end
                 break
@@ -357,7 +404,7 @@ AddEventHandler('multijob:admin:updateJob', function(data)
     
     -- Refresh the admin's player list and jobs
     Wait(500) -- Small delay to let DB update complete
-    TriggerEvent('multijob:admin:getPlayers')
+    FetchAndSendPlayerList(_source)
     
     -- Send updated jobs list
     MySQL.query('SELECT * FROM marshal_multi_jobs WHERE cid = ?', {targetCid}, function(jobs)
@@ -400,6 +447,7 @@ AddEventHandler('multijob:admin:removeJobEntry', function(targetCid, targetJob)
                     Character.setJobGrade(0)
                     Character.setJobLabel('Unemployed')
                     TriggerClientEvent('vorp:TipRight', tonumber(playerId), 'Your job has been removed by an admin', 4000)
+                    TriggerClientEvent('vorp:playerJobChange', tonumber(playerId))
                     TriggerClientEvent('multijob:forceCheck', tonumber(playerId))
                     break
                 end

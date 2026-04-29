@@ -12,6 +12,11 @@ Citizen.CreateThread(function()
     if Config.Debug then print('[multijob] VORP Core loaded successfully') end
 end)
 
+-- Notify client of job change so scripts listening for vorp:playerJobChange pick it up
+local function NotifyJobChange(playerSource)
+    TriggerClientEvent('vorp:playerJobChange', playerSource)
+end
+
 -- Helper function to safely get character
 local function GetCharacter(source)
     if not VORPcore then return nil end
@@ -90,7 +95,7 @@ end
 -- VORP's setJob/setJobGrade/setJobLabel only update in-memory state; the
 -- characters table would otherwise not be updated until the next periodic save,
 -- which means vorp_crafting (and anything else reading the DB) would see stale data.
-local function PersistJobToCharacters(identifier, charIdentifier, job, jobgrade, joblabel)
+function PersistJobToCharacters(identifier, charIdentifier, job, jobgrade, joblabel)
     if not identifier or not charIdentifier then return end
     -- Store label exactly as given; blank labels stay blank (do NOT copy the job ID)
     local safeLabel = joblabel or ''
@@ -202,6 +207,7 @@ AddEventHandler('multijob:quickSwitch', function(jobIndex)
 
         TriggerClientEvent('vorp:TipRight', _source, string.format(Locales['job_switched'], targetLabel), 4000)
         TriggerClientEvent('multijob:updateCurrentJob', _source, targetJob, targetLabel, targetGrade)
+        NotifyJobChange(_source)
 
         -- Refresh jobs list for client
         GetPlayerJobs(cid, function(updatedJobs)
@@ -237,6 +243,7 @@ AddEventHandler('multijob:switchJob', function(targetJob)
         PersistJobToCharacters(Character.identifier, Character.charIdentifier, 'unemployed', 0, 'Unemployed')
         TriggerClientEvent('vorp:TipRight', _source, string.format(Locales['job_switched'], 'Unemployed'), 4000)
         TriggerClientEvent('multijob:updateCurrentJob', _source, 'unemployed', 'Unemployed', 0)
+        NotifyJobChange(_source)
         GetPlayerJobs(cid, function(jobs)
             TriggerClientEvent('multijob:receiveJobs', _source, InjectUnemployed(jobs))
         end)
@@ -260,7 +267,8 @@ AddEventHandler('multijob:switchJob', function(targetJob)
             
             TriggerClientEvent('vorp:TipRight', _source, string.format(Locales['job_switched'], newLabel), 4000)
             TriggerClientEvent('multijob:updateCurrentJob', _source, newJob, newLabel, newGrade)
-            
+            NotifyJobChange(_source)
+
             -- Refresh jobs list for client
             GetPlayerJobs(cid, function(jobs)
                 TriggerClientEvent('multijob:receiveJobs', _source, InjectUnemployed(jobs))
@@ -293,6 +301,7 @@ AddEventHandler('multijob:quitJob', function(jobToQuit)
         Character.setJobLabel(Config.DefaultJobLabel)
         -- Immediately persist unemployed status to characters table
         PersistJobToCharacters(Character.identifier, Character.charIdentifier, Config.DefaultJob, Config.DefaultGrade, Config.DefaultJobLabel)
+        NotifyJobChange(_source)
         TriggerClientEvent('vorp:TipRight', _source, Locales['job_quitted'], 4000)
     end
 
@@ -323,6 +332,7 @@ AddEventHandler('multijob:quitAllJobs', function()
     -- Remove all jobs from DB
     MySQL.execute('DELETE FROM marshal_multi_jobs WHERE cid = ?', {cid})
 
+    NotifyJobChange(_source)
     TriggerClientEvent('vorp:TipRight', _source, Locales['all_jobs_quitted'], 4000)
     TriggerClientEvent('multijob:receiveJobs', _source, InjectUnemployed({}))
 end)

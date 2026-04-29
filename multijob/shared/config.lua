@@ -50,30 +50,6 @@ Config.JobPresets = {
             { job = "SheriffW", label = "LIEUTENANT", grade = 2, category = "Frontier Sheriff" },
             { job = "SheriffW", label = "UNDERSHERIFF", grade = 3, category = "Frontier Sheriff" },
             { job = "SheriffW", label = "SHERIFF", grade = 4, category = "Frontier Sheriff" },
-            -- Lemoyne Sheriff
-            { job = "Lemoyne", label = "DEPUTY", grade = 0, category = "Lemoyne Sheriff" },
-            { job = "Lemoyne", label = "SERGEANT", grade = 1, category = "Lemoyne Sheriff" },
-            { job = "Lemoyne", label = "LIEUTENANT", grade = 2, category = "Lemoyne Sheriff" },
-            { job = "Lemoyne", label = "UNDERSHERIFF", grade = 3, category = "Lemoyne Sheriff" },
-            { job = "Lemoyne", label = "SHERIFF", grade = 4, category = "Lemoyne Sheriff" },
-            -- West Elizabeth Sheriff
-            { job = "WestElizabeth", label = "DEPUTY", grade = 0, category = "West Elizabeth Sheriff" },
-            { job = "WestElizabeth", label = "SERGEANT", grade = 1, category = "West Elizabeth Sheriff" },
-            { job = "WestElizabeth", label = "LIEUTENANT", grade = 2, category = "West Elizabeth Sheriff" },
-            { job = "WestElizabeth", label = "UNDERSHERIFF", grade = 3, category = "West Elizabeth Sheriff" },
-            { job = "WestElizabeth", label = "SHERIFF", grade = 4, category = "West Elizabeth Sheriff" },
-            -- New Hanover Sheriff
-            { job = "NewHanover", label = "DEPUTY", grade = 0, category = "New Hanover Sheriff" },
-            { job = "NewHanover", label = "SERGEANT", grade = 1, category = "New Hanover Sheriff" },
-            { job = "NewHanover", label = "LIEUTENANT", grade = 2, category = "New Hanover Sheriff" },
-            { job = "NewHanover", label = "UNDERSHERIFF", grade = 3, category = "New Hanover Sheriff" },
-            { job = "NewHanover", label = "SHERIFF", grade = 4, category = "New Hanover Sheriff" },
-            -- New Austin Sheriff
-            { job = "NewAustin", label = "DEPUTY", grade = 0, category = "New Austin Sheriff" },
-            { job = "NewAustin", label = "SERGEANT", grade = 1, category = "New Austin Sheriff" },
-            { job = "NewAustin", label = "LIEUTENANT", grade = 2, category = "New Austin Sheriff" },
-            { job = "NewAustin", label = "UNDERSHERIFF", grade = 3, category = "New Austin Sheriff" },
-            { job = "NewAustin", label = "SHERIFF", grade = 4, category = "New Austin Sheriff" },
             -- Cavalry
             { job = "CAVALRY", label = "TROOPER", grade = 0, category = "Cavalry" },
             { job = "CAVALRY", label = "CORPORAL", grade = 1, category = "Cavalry" },
@@ -91,11 +67,12 @@ Config.JobPresets = {
             { job = "DOJ", label = "ADA", grade = 2, category = "Department of Justice" },
             { job = "DOJ", label = "DA", grade = 3, category = "Department of Justice" },
             { job = "DOJ", label = "JUDGE", grade = 4, category = "Department of Justice" },
+            { job = "DOJ", label = "AG", grade = 3, category = "US Marshals" },
             -- DOJM (Marshals)
-            { job = "DOJM", label = "DEPMARSHAL", grade = 0, category = "US Marshals" },
-            { job = "DOJM", label = "MARSHAL", grade = 1, category = "US Marshals" },
-            { job = "DOJM", label = "CHIEFMARSHAL", grade = 2, category = "US Marshals" },
-            { job = "DOJM", label = "AG", grade = 3, category = "US Marshals" },
+            { job = "Marshals", label = "DEPMARSHAL", grade = 0, category = "US Marshals" },
+            { job = "Marshals", label = "MARSHAL", grade = 1, category = "US Marshals" },
+            { job = "Marshals", label = "CHIEFMARSHAL", grade = 2, category = "US Marshals" },
+            { job = "Marshals", label = "SPCDEPUTY", grade = 0, category = "US Marshals" },
             -- GOVT
             { job = "GOVT", label = "MAYOR", grade = 0, category = "Government Officials" },
             { job = "GOVT", label = "COS", grade = 1, category = "Government Officials" },
